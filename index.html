@@ -70,7 +70,7 @@
     margin-bottom: 6px;
     margin-top: 16px;
   }
-  input[type=text], input[type=email] {
+  input[type=text], input[type=email], input[type=tel], select {
     width: 100%;
     padding: 12px 14px;
     border: 1px solid var(--line);
@@ -79,7 +79,14 @@
     color: var(--navy);
     background: var(--cream);
   }
-  input:focus { outline: 2px solid var(--accent); }
+  select {
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='%234A5568'><path d='M5.5 7.5l4.5 4.5 4.5-4.5' stroke='%234A5568' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>");
+    background-repeat: no-repeat;
+    background-position: right 14px center;
+  }
+  input:focus, select:focus { outline: 2px solid var(--accent); }
   button.submit {
     margin-top: 24px;
     width: 100%;
@@ -144,6 +151,18 @@
       <label id="emailLabel" for="email">Email</label>
       <input type="email" id="email" required>
 
+      <label id="phoneLabel" for="phone">Phone</label>
+      <input type="tel" id="phone" required>
+
+      <label id="timelineLabel" for="timeline">How soon are you looking to buy?</label>
+      <select id="timeline" required>
+        <option id="timelineOpt0" value="" disabled selected>Select one</option>
+        <option id="timelineOpt30" value="30 days">Within 30 days</option>
+        <option id="timelineOpt60" value="60 days">Within 60 days</option>
+        <option id="timelineOpt90" value="90 days">Within 90 days</option>
+        <option id="timelineOpt180" value="6 months">6 months+</option>
+      </select>
+
       <button type="submit" class="submit" id="submitBtn">Send Me The Guide</button>
       <div class="error" id="errorMsg">Something went wrong &mdash; please try again or text Maria directly.</div>
     </form>
@@ -172,6 +191,13 @@
       formSubHola: "You're one step from the VIP list — first-time homebuyer tips, money myths, and Triangle market updates, plus your free First-Time Buyer Guide right now.",
       nameLabel: "Name",
       emailLabel: "Email",
+      phoneLabel: "Phone",
+      timelineLabel: "How soon are you looking to buy?",
+      timelineOpt0: "Select one",
+      timelineOpt30: "Within 30 days",
+      timelineOpt60: "Within 60 days",
+      timelineOpt90: "Within 90 days",
+      timelineOpt180: "6 months+",
       submitBtn: "Send Me The Guide",
       errorMsg: "Something went wrong — please try again or text Maria directly.",
       successTitle: "You're in!",
@@ -185,6 +211,13 @@
       formSubHola: "Estás a un paso de la lista VIP — consejos para compradores primerizos, mitos sobre el dinero, y actualizaciones del mercado del Triangle, además de tu Guía gratis ahora mismo.",
       nameLabel: "Nombre",
       emailLabel: "Correo electrónico",
+      phoneLabel: "Teléfono",
+      timelineLabel: "¿Qué tan pronto buscas comprar?",
+      timelineOpt0: "Selecciona una opción",
+      timelineOpt30: "En los próximos 30 días",
+      timelineOpt60: "En los próximos 60 días",
+      timelineOpt90: "En los próximos 90 días",
+      timelineOpt180: "6 meses o más",
       submitBtn: "Envíame la Guía",
       errorMsg: "Algo salió mal — intenta de nuevo o envía un mensaje de texto a Maria directamente.",
       successTitle: "¡Listo!",
@@ -203,6 +236,13 @@
     document.getElementById("formSub").textContent = source === "hola" ? s.formSubHola : s.formSubGuide;
     document.getElementById("nameLabel").textContent = s.nameLabel;
     document.getElementById("emailLabel").textContent = s.emailLabel;
+    document.getElementById("phoneLabel").textContent = s.phoneLabel;
+    document.getElementById("timelineLabel").textContent = s.timelineLabel;
+    document.getElementById("timelineOpt0").textContent = s.timelineOpt0;
+    document.getElementById("timelineOpt30").textContent = s.timelineOpt30;
+    document.getElementById("timelineOpt60").textContent = s.timelineOpt60;
+    document.getElementById("timelineOpt90").textContent = s.timelineOpt90;
+    document.getElementById("timelineOpt180").textContent = s.timelineOpt180;
     document.getElementById("submitBtn").textContent = s.submitBtn;
     document.getElementById("errorMsg").textContent = s.errorMsg;
     document.getElementById("successTitle").textContent = s.successTitle;
@@ -221,11 +261,13 @@
     evt.preventDefault();
     var name = document.getElementById("name").value.trim();
     var email = document.getElementById("email").value.trim();
+    var phone = document.getElementById("phone").value.trim();
+    var timeline = document.getElementById("timeline").value;
     var btn = document.getElementById("submitBtn");
     var err = document.getElementById("errorMsg");
     err.style.display = "none";
 
-    if (!name || !email) return false;
+    if (!name || !email || !phone || !timeline) return false;
 
     btn.disabled = true;
     btn.textContent = "...";
@@ -234,7 +276,7 @@
       fetch(APPS_SCRIPT_URL, {
         method: "POST",
         mode: "no-cors",
-        body: JSON.stringify({ action: "submitLead", name: name, email: email, source: source, lang: lang })
+        body: JSON.stringify({ action: "submitLead", name: name, email: email, phone: phone, timeline: timeline, source: source, lang: lang })
       });
     } catch (e) {
       // fire-and-forget; still show success since the guide download works regardless
