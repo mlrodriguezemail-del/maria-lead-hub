@@ -1,0 +1,72 @@
+/**
+ * Maria Lead Hub backend.
+ * Receives lead submissions from the GitHub Pages front end (index.html),
+ * logs them to the "Leads" sheet tab, and emails the guide + a notification.
+ */
+
+var SHEET_ID = "1F8nvMhU85aE_PZxi7QjTdHwUAofIVdHrj_asqiqdN6Y";
+var GUIDE_URL = "https://mlrodriguezemail-del.github.io/maria-lead-hub/guide.pdf";
+var NOTIFY_EMAIL = "marialrodriguez@kw.com";
+
+function doPost(e) {
+  var body = JSON.parse(e.postData.contents);
+
+  if (body.action === "submitLead") {
+    submitLead_(body);
+  }
+
+  return ContentService.createTextOutput(JSON.stringify({ ok: true }))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+function doGet(e) {
+  return ContentService.createTextOutput("Maria Lead Hub backend is running.");
+}
+
+function submitLead_(body) {
+  var name = (body.name || "").toString().trim();
+  var email = (body.email || "").toString().trim();
+  var source = (body.source || "direct").toString().trim();
+  var lang = (body.lang || "en").toString().trim();
+
+  var sheet = SpreadsheetApp.openById(SHEET_ID).getSheetByName("Leads")
+    || SpreadsheetApp.openById(SHEET_ID).getSheets()[0];
+
+  sheet.appendRow([new Date(), name, email, source, lang]);
+
+  sendGuideEmail_(name, email, lang);
+  notifyMaria_(name, email, source);
+}
+
+function sendGuideEmail_(name, email, lang) {
+  var isEs = lang === "es";
+
+  var subject = isEs
+    ? "Tu Guia para Comprar tu Primera Casa"
+    : "Your First Home Buyer Guide";
+
+  var greeting = name ? (isEs ? "Hola " + name + "," : "Hi " + name + ",") : (isEs ? "Hola," : "Hi,");
+
+  var bodyText = isEs
+    ? greeting + "\n\nAqui esta tu guia gratuita para compradores de primera vez, con mitos sobre el dinero, numeros reales, y el proceso paso a paso.\n\nSi tienes preguntas, responde este correo o escribeme al 919-671-5108.\n\nMaria Rodriguez\nKeller Williams Realty Cary\n@mariainthetriangle"
+    : greeting + "\n\nHere's your free First-Time Buyer Guide - money myths, real numbers, and the step-by-step process.\n\nQuestions? Just reply to this email or text me at 919-671-5108.\n\nMaria Rodriguez\nKeller Williams Realty Cary\n@mariainthetriangle";
+
+  var attachment = UrlFetchApp.fetch(GUIDE_URL).getBlob().setName("Your First Home Buyer Guide.pdf");
+
+  MailApp.sendEmail({
+    to: email,
+    subject: subject,
+    body: bodyText,
+    attachments: [attachment],
+    name: "Maria Rodriguez"
+  });
+}
+
+function notifyMaria_(name, email, source) {
+  MailApp.sendEmail({
+    to: NOTIFY_EMAIL,
+    subject: "New lead: " + (name || "(no name)") + " - " + source,
+    body: "New lead from the Instagram hub.\n\nName: " + name + "\nEmail: " + email + "\nSource: " + source
+      + "\n\nThey were automatically emailed the guide. Add them to Follow Up Boss when you get a chance."
+  });
+}
