@@ -109,17 +109,6 @@
   .success { text-align: center; }
   .success h1 { margin-bottom: 12px; }
   .success p { font-size: 14.5px; line-height: 1.5; }
-  .download-btn {
-    display: inline-block;
-    margin-top: 18px;
-    background: var(--accent);
-    color: #fff;
-    text-decoration: none;
-    padding: 14px 22px;
-    border-radius: 8px;
-    font-weight: 700;
-    font-size: 15px;
-  }
   .contact {
     margin-top: 28px;
     padding-top: 18px;
@@ -170,8 +159,7 @@
 
   <div id="successView" class="hidden success">
     <h1 id="successTitle">You're in!</h1>
-    <p id="successBody">Your guide is ready below, and a copy is on its way to your email too.</p>
-    <a href="guide.pdf" class="download-btn" id="downloadBtn" target="_blank" rel="noopener">Download Your Guide</a>
+    <p id="successBody">Check your email &mdash; your guide is on its way.</p>
   </div>
 
   <div class="contact">
@@ -201,8 +189,7 @@
       submitBtn: "Send Me The Guide",
       errorMsg: "Something went wrong — please try again or text Maria directly.",
       successTitle: "You're in!",
-      successBody: "Your guide is ready below, and a copy is on its way to your email too.",
-      downloadBtn: "Download Your Guide"
+      successBody: "Check your email — your guide is on its way."
     },
     es: {
       formTitleGuide: "Tu Guía para Comprar tu Primera Casa",
@@ -221,8 +208,7 @@
       submitBtn: "Envíame la Guía",
       errorMsg: "Algo salió mal — intenta de nuevo o envía un mensaje de texto a Maria directamente.",
       successTitle: "¡Listo!",
-      successBody: "Tu guía está lista abajo, y una copia va en camino a tu correo también.",
-      downloadBtn: "Descargar tu Guía"
+      successBody: "Revisa tu correo — tu guía va en camino."
     }
   };
 
@@ -247,7 +233,6 @@
     document.getElementById("errorMsg").textContent = s.errorMsg;
     document.getElementById("successTitle").textContent = s.successTitle;
     document.getElementById("successBody").textContent = s.successBody;
-    document.getElementById("downloadBtn").textContent = s.downloadBtn;
   }
 
   function setLang(l) {
@@ -279,7 +264,7 @@
         body: JSON.stringify({ action: "submitLead", name: name, email: email, phone: phone, timeline: timeline, source: source, lang: lang })
       });
     } catch (e) {
-      // fire-and-forget; still show success since the guide download works regardless
+      // fire-and-forget POST; no-cors means we can't read a response anyway
     }
 
     document.getElementById("formView").classList.add("hidden");

@@ -2,6 +2,9 @@
  * Maria Lead Hub backend.
  * Receives lead submissions from the GitHub Pages front end (index.html),
  * logs them to the "Leads" sheet tab, and emails the guide + a notification.
+ * The FUB API key never lives here - a separate local script reads unsynced
+ * leads via the admin endpoints below and creates them in Follow Up Boss
+ * using the key from .env.local on Maria's machine only.
  */
 
 var SHEET_ID = "1F8nvMhU85aE_PZxi7QjTdHwUAofIVdHrj_asqiqdN6Y";
@@ -13,6 +16,8 @@ function doPost(e) {
 
   if (body.action === "submitLead") {
     submitLead_(body);
+  } else if (body.action === "markSynced") {
+    return adminMarkSynced_(body);
   }
 
   return ContentService.createTextOutput(JSON.stringify({ ok: true }))
@@ -20,22 +25,36 @@ function doPost(e) {
 }
 
 function doGet(e) {
+  var p = (e && e.parameter) || {};
+  if (p.action === "listUnsyncedLeads") {
+    return adminListUnsyncedLeads_(p);
+  }
   return ContentService.createTextOutput("Maria Lead Hub backend is running.");
+}
+
+function getSheet_() {
+  return SpreadsheetApp.openById(SHEET_ID).getSheetByName("Leads")
+    || SpreadsheetApp.openById(SHEET_ID).getSheets()[0];
+}
+
+function checkAdminToken_(token) {
+  var real = PropertiesService.getScriptProperties().getProperty("ADMIN_TOKEN");
+  return real && token === real;
 }
 
 function submitLead_(body) {
   var name = (body.name || "").toString().trim();
   var email = (body.email || "").toString().trim();
+  var phone = (body.phone || "").toString().trim();
+  var timeline = (body.timeline || "").toString().trim();
   var source = (body.source || "direct").toString().trim();
   var lang = (body.lang || "en").toString().trim();
 
-  var sheet = SpreadsheetApp.openById(SHEET_ID).getSheetByName("Leads")
-    || SpreadsheetApp.openById(SHEET_ID).getSheets()[0];
-
-  sheet.appendRow([new Date(), name, email, source, lang]);
+  var sheet = getSheet_();
+  sheet.appendRow([new Date(), name, email, phone, timeline, source, lang, "FALSE"]);
 
   sendGuideEmail_(name, email, lang);
-  notifyMaria_(name, email, source);
+  notifyMaria_(name, email, phone, timeline, source);
 }
 
 function sendGuideEmail_(name, email, lang) {
@@ -62,11 +81,60 @@ function sendGuideEmail_(name, email, lang) {
   });
 }
 
-function notifyMaria_(name, email, source) {
+function notifyMaria_(name, email, phone, timeline, source) {
   MailApp.sendEmail({
     to: NOTIFY_EMAIL,
     subject: "New lead: " + (name || "(no name)") + " - " + source,
-    body: "New lead from the Instagram hub.\n\nName: " + name + "\nEmail: " + email + "\nSource: " + source
-      + "\n\nThey were automatically emailed the guide. Add them to Follow Up Boss when you get a chance."
+    body: "New lead from the Instagram hub.\n\nName: " + name + "\nEmail: " + email + "\nPhone: " + phone
+      + "\nTimeline: " + timeline + "\nSource: " + source
+      + "\n\nThey were automatically emailed the guide, and will be synced to Follow Up Boss shortly."
   });
+}
+
+function adminListUnsyncedLeads_(p) {
+  if (!checkAdminToken_(p.adminToken)) {
+    return ContentService.createTextOutput(JSON.stringify({ ok: false, error: "unauthorized" }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+
+  var sheet = getSheet_();
+  var values = sheet.getDataRange().getValues();
+  var leads = [];
+
+  for (var i = 1; i < values.length; i++) {
+    var row = values[i];
+    var synced = (row[7] || "").toString().trim().toUpperCase();
+    if (synced === "TRUE") continue;
+    if (!row[2]) continue; // no email, skip blank rows
+
+    leads.push({
+      row: i + 1,
+      timestamp: row[0] instanceof Date ? row[0].toISOString() : row[0],
+      name: row[1],
+      email: row[2],
+      phone: row[3],
+      timeline: row[4],
+      source: row[5],
+      lang: row[6]
+    });
+  }
+
+  return ContentService.createTextOutput(JSON.stringify({ ok: true, leads: leads }))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+function adminMarkSynced_(body) {
+  if (!checkAdminToken_(body.adminToken)) {
+    return ContentService.createTextOutput(JSON.stringify({ ok: false, error: "unauthorized" }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+
+  var sheet = getSheet_();
+  var rows = body.rows || [];
+  for (var i = 0; i < rows.length; i++) {
+    sheet.getRange(rows[i], 8).setValue("TRUE");
+  }
+
+  return ContentService.createTextOutput(JSON.stringify({ ok: true, updated: rows.length }))
+    .setMimeType(ContentService.MimeType.JSON);
 }
